@@ -1,0 +1,85 @@
+<div class="min-h-screen bg-[#f7f6f2] text-stone-900">
+  <header class="border-b border-white/10 bg-[#182221] text-white shadow-md">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-4 md:px-8">
+      <button type="button" (click)="cambiarPagina('catalogo')" class="flex items-center gap-3 text-left">
+        <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-300 text-xl font-black text-stone-950">M</span>
+        <span><span class="block text-xl font-black tracking-[0.2em]">MÓNACO</span><span class="text-xs text-amber-200">Catálogo de bebidas</span></span>
+      </button>
+      <nav class="flex flex-wrap items-center gap-2" aria-label="Navegación por rol">
+        <button (click)="cambiarPagina('catalogo')" class="rounded-xl px-4 py-2 text-sm font-bold hover:bg-white/15">Productos</button>
+        @if (auth.rol() === 2) {
+          <button (click)="cambiarPagina('pedidos')" class="rounded-xl px-4 py-2 text-sm font-bold hover:bg-white/15">Mis pedidos</button>
+        }
+        @if (auth.rol() === 1) {
+          <button (click)="cambiarPagina('admin')" class="rounded-xl px-4 py-2 text-sm font-bold hover:bg-white/15">Administrar productos</button>
+        }
+        @if (auth.usuario()) {
+          <span class="px-2 text-xs text-amber-200">{{ auth.usuario()?.correo }} · Rol {{ auth.rol() }}</span>
+          <button (click)="salir()" class="rounded-xl border border-white/30 px-4 py-2 text-sm font-bold hover:bg-white/15">Cerrar sesión</button>
+        } @else {
+          <button (click)="visitante()" class="rounded-xl border border-white/30 px-4 py-2 text-sm font-bold">Entrar sin cuenta</button>
+          <button (click)="modoAcceso.set('login'); cambiarPagina('acceso')" class="rounded-xl bg-amber-300 px-4 py-2 text-sm font-black text-stone-950">Iniciar sesión</button>
+          <button (click)="modoAcceso.set('registro'); cambiarPagina('acceso')" class="rounded-xl border border-amber-300 px-4 py-2 text-sm font-bold text-amber-200">Crear cuenta</button>
+        }
+      </nav>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-7xl px-5 pb-14 pt-9 md:px-8">
+    @if (pagina() === 'catalogo') {
+      <section class="rounded-[2rem] bg-[#182221] px-7 py-12 text-white md:px-12">
+        <p class="text-xs font-bold uppercase tracking-[0.2em] text-amber-300">Bienvenido a Mónaco</p>
+        <h1 class="mt-4 text-4xl font-black md:text-5xl">Descubre nuestras <span class="text-amber-300">bebidas.</span></h1>
+        @if (auth.rol() === 2) {
+          <p class="mt-4 max-w-2xl text-stone-300">Selecciona una bebida para registrar tu pedido. Se guardará en tu cuenta.</p>
+        } @else if (auth.rol() === 1) {
+          <p class="mt-4 max-w-2xl text-stone-300">Estás usando una cuenta administradora. Puedes consultar el catálogo y gestionar productos desde tu panel.</p>
+        } @else {
+          <p class="mt-4 max-w-2xl text-stone-300">Estás navegando como visitante. Puedes ver los productos sin necesidad de registrarte.</p>
+        }
+      </section>
+      <app-resumen-productos />
+      @if (pedidos.aviso()) {
+        <div role="status" class="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">{{ pedidos.aviso() }}</div>
+      }
+      @if (pedidos.error()) {
+        <div role="alert" class="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800">{{ pedidos.error() }}</div>
+      }
+      <app-lista-productos />
+    } @else if (pagina() === 'pedidos' && auth.rol() === 2) {
+      <section class="rounded-[2rem] bg-[#182221] p-8 text-white">
+        <h1 class="text-4xl font-black">Mis pedidos</h1>
+        <p class="mt-3 text-stone-300">Solo se muestran pedidos vinculados a tu cuenta de cliente.</p>
+      </section>
+      <app-resumen-pedidos />
+      <app-lista-pedidos />
+    } @else if (pagina() === 'admin' && auth.rol() === 1) {
+      <app-panel-administracion />
+    } @else if (pagina() === 'acceso' && !auth.usuario()) {
+      <section class="mx-auto max-w-xl rounded-[2rem] border border-stone-200 bg-white p-7 shadow-sm md:p-10">
+        <h1 class="text-3xl font-black">{{ modoAcceso() === 'login' ? 'Iniciar sesión' : 'Crear cuenta de cliente' }}</h1>
+        <p class="mt-2 text-sm text-stone-500">{{ modoAcceso() === 'login' ? 'Accede con tu correo y contraseña.' : 'Las cuentas nuevas reciben automáticamente el rol 2 (Cliente).' }}</p>
+        <div class="mt-5 flex gap-3">
+          <button type="button" (click)="modoAcceso.set('login'); auth.error.set('')" class="rounded-xl border px-4 py-2 text-sm font-semibold">Iniciar sesión</button>
+          <button type="button" (click)="modoAcceso.set('registro'); auth.error.set('')" class="rounded-xl border px-4 py-2 text-sm font-semibold">Crear cuenta</button>
+        </div>
+        <form (submit)="$event.preventDefault(); modoAcceso() === 'login' ? entrar() : registrar()" class="mt-7 grid gap-4">
+          @if (modoAcceso() === 'registro') {
+            <label class="text-sm font-bold">Nombre completo<input required [value]="nombre()" (input)="nombre.set($any($event.target).value)" class="mt-1 w-full rounded-xl border px-4 py-3 font-normal" /></label>
+            <label class="text-sm font-bold">Teléfono<input required [value]="telefono()" (input)="telefono.set($any($event.target).value)" class="mt-1 w-full rounded-xl border px-4 py-3 font-normal" /></label>
+            <label class="text-sm font-bold">CI / Documento<input required [value]="ci()" (input)="ci.set($any($event.target).value)" class="mt-1 w-full rounded-xl border px-4 py-3 font-normal" /></label>
+            <label class="text-sm font-bold">Fecha de nacimiento<input required type="date" [value]="fechaNacimiento()" (input)="fechaNacimiento.set($any($event.target).value)" class="mt-1 w-full rounded-xl border px-4 py-3 font-normal" /></label>
+          }
+          <label class="text-sm font-bold">Correo electrónico<input required type="email" autocomplete="email" [value]="correo()" (input)="correo.set($any($event.target).value)" class="mt-1 w-full rounded-xl border px-4 py-3 font-normal" /></label>
+          <label class="text-sm font-bold">Contraseña<input required type="password" minlength="8" autocomplete="current-password" [value]="password()" (input)="password.set($any($event.target).value)" class="mt-1 w-full rounded-xl border px-4 py-3 font-normal" /></label>
+          @if (auth.error()) { <div role="alert" class="rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{{ auth.error() }}</div> }
+          <button type="submit" [disabled]="auth.cargando()" class="rounded-xl bg-amber-300 px-5 py-3 font-black text-stone-950 disabled:opacity-50">{{ auth.cargando() ? 'Procesando…' : (modoAcceso() === 'login' ? 'Entrar' : 'Registrarme') }}</button>
+        </form>
+        <button type="button" (click)="visitante()" class="mt-5 text-sm font-semibold text-amber-800 underline">Entrar sin cuenta</button>
+      </section>
+    }
+  </main>
+  <footer class="border-t border-stone-200 bg-white px-5 py-8 text-center text-xs text-stone-500">
+    MÓNACO · Angular + ASP.NET Core + PostgreSQL · Rol 1: Administrador · Rol 2: Cliente · Visitante: sin cuenta
+  </footer>
+</div>

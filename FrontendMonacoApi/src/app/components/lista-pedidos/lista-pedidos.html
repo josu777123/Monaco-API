@@ -1,0 +1,40 @@
+<section class="mt-10">
+  <div class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-xs font-bold uppercase tracking-[0.23em] text-amber-800">Cuenta de cliente</p>
+      <h2 class="mt-2 text-3xl font-black tracking-tight text-[#182221]">Mis pedidos</h2>
+      <p class="mt-2 text-sm leading-6 text-stone-500">Estos son únicamente tus pedidos, asociados a tu usuario.</p>
+    </div>
+    <button type="button" (click)="pedidoService.cargarPedidos()" [disabled]="pedidoService.cargando()"
+            class="rounded-xl border border-stone-300 bg-white px-5 py-3 text-sm font-bold text-stone-700 transition hover:bg-stone-50 disabled:cursor-wait disabled:opacity-60">
+      {{ pedidoService.cargando() ? 'Actualizando…' : 'Actualizar pedidos' }}
+    </button>
+  </div>
+
+  @if (pedidoService.cargando()) {
+    <div class="mt-7 flex items-center justify-center gap-3 rounded-2xl border border-stone-200 bg-white p-10 text-stone-600" role="status">
+      <span class="h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-amber-500" aria-hidden="true"></span>
+      Cargando pedidos desde Monaco-Api…
+    </div>
+  }
+  @if (pedidoService.error()) {
+    <div class="mt-7 rounded-2xl border border-rose-200 bg-rose-50 p-6" role="alert">
+      <p class="font-bold text-rose-900">No se pudieron cargar los pedidos</p>
+      <p class="mt-2 text-sm leading-6 text-rose-800">{{ pedidoService.error() }}</p>
+      <button type="button" (click)="pedidoService.cargarPedidos()" class="mt-4 rounded-lg bg-rose-900 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-rose-800">Reintentar conexión</button>
+    </div>
+  }
+  @if (!pedidoService.cargando() && !pedidoService.error() && pedidoService.lista().length === 0) {
+    <div class="mt-7 rounded-2xl border border-stone-200 bg-white p-8 text-center">
+      <p class="font-semibold text-stone-800">Todavía no hay pedidos activos.</p>
+      <p class="mt-2 text-sm text-stone-500">Aún no has registrado pedidos con tu cuenta.</p>
+    </div>
+  }
+  @if (!pedidoService.cargando() && !pedidoService.error() && pedidoService.lista().length > 0) {
+    <div class="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      @for (pedido of pedidoService.lista(); track pedido.id_Pedido) {
+        <app-item-pedidos [pedido]="pedido" />
+      }
+    </div>
+  }
+</section>
