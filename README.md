@@ -1,254 +1,158 @@
-Monaco API 
+# Mónaco — tienda de bebidas
 
-API REST desarrollada con ASP.NET Core para administrar productos y operaciones de una tienda. Incluye categorías, clientes, sucursales, pedidos, pagos, usuarios y solicitudes de soporte.
+Aplicación web académica para consultar un catálogo de bebidas, registrar pedidos y administrar productos. El proyecto conecta un frontend Angular con una API ASP.NET Core y una base de datos PostgreSQL.
 
-Tecnologías
+## Funcionalidades
 
-- .NET 10
+### Frontend
 
-- ASP.NET Core Web API
+- Catálogo público con búsqueda, disponibilidad, precio, marca, presentación y stock.
+- Registro de cuenta de cliente e inicio y cierre de sesión.
+- Acceso como visitante en modo de solo lectura.
+- Pedidos para clientes: el cliente solicita una unidad desde una tarjeta, consulta sus pedidos y recibe el resultado de la API.
+- Administración de productos para el rol Administrador: crear, editar y desactivar productos.
+- Indicadores de carga, mensajes de error y actualización del catálogo.
 
-- Entity Framework Core
+### Roles
 
-- PostgreSQL con Npgsql
+| Rol | Acceso |
+|---|---|
+| Visitante | Consultar el catálogo. |
+| Cliente | Consultar el catálogo, registrar pedidos y consultar sus propios pedidos. |
+| Administrador | Consultar, crear, editar y desactivar productos. |
 
-- Scalar y OpenAPI para consultar la documentación de la API
+El panel de administración de esta versión gestiona **productos**. Las demás operaciones CRUD antiguas del backend están deshabilitadas por una política de acceso.
 
+## Qué hace el frontend
 
+El frontend está en `FrontendMonacoApi/` y usa Angular 22 con componentes standalone, señales (`signal` y `computed`), `HttpClient` y Tailwind CSS.
 
-Requisitos
+- `src/app/app.ts` mantiene la pantalla visible, comprueba la sesión y permite la navegación según el rol.
+- `src/app/app.html` presenta el catálogo, el acceso, los pedidos del cliente y la administración.
+- `src/app/services/servicio-auth.ts` llama a la API para iniciar sesión, registrar clientes, recuperar la sesión y cerrarla.
+- `src/app/services/servicio-productos.ts` obtiene la lista de productos activos.
+- `src/app/services/servicio-pedidos.ts` obtiene los pedidos del cliente y envía solicitudes para crear pedidos.
+- `src/app/components/` contiene las tarjetas y listas de productos y pedidos, los resúmenes y el formulario CRUD de productos.
+- `src/app/models/` define los tipos de producto, pedido y sesión que usa Angular.
+- `proxy.conf.json` reenvía las solicitudes `/api/...` al backend local en `http://127.0.0.1:5051`.
 
+La comunicación queda así:
 
-
-- .NET 10 SDK
-
-- PostgreSQL instalado y en ejecución
-
-- Conexión a Internet la primera vez para descargar los paquetes del proyecto
-
-
-Descargar el proyecto
-
-
-
-```bash
-
-git clone https://github.com/josu777123/Monaco-API.git
-
-cd Monaco-API
-
+```text
+Navegador → Angular (localhost:4200) → proxy /api → ASP.NET Core (localhost:5051)
+                                                         ↓
+                                                  PostgreSQL
 ```
 
+El navegador usa rutas relativas como `/api/Productos/listaReal`. Durante el desarrollo, el proxy de Angular las reenvía al backend; por eso no hace falta configurar CORS para esta ejecución local. Si cambias `proxy.conf.json`, detén y vuelve a iniciar `npm start`.
 
+Al confirmar un pedido, el backend valida la sesión del cliente y el stock. Si hay unidades disponibles, registra el pedido y su detalle, y descuenta el stock en la misma transacción.
 
-El proyecto de la API está dentro de la carpeta `ProyectoDiseñoWeb2`.
+## Tecnologías
 
+- Frontend: Angular 22, TypeScript, RxJS y Tailwind CSS 4.
+- Backend: ASP.NET Core / .NET 10, Entity Framework Core y Npgsql.
+- Base de datos: PostgreSQL.
+- Autenticación: cookie HTTP-only y contraseña almacenada usando el hasher de ASP.NET Core Identity.
 
-Configurar la base de datos
+Para Angular 22, instala Node.js 22.22.3 o superior en la línea 22, o una versión compatible indicada por la [tabla oficial de compatibilidad de Angular](https://angular.dev/reference/versions). También necesitas npm, el SDK de .NET 10 y PostgreSQL.
 
+## Ejecutar el proyecto en local
 
-Crea una base de datos llamada `ProyectoDiseñoWeb2Context`. Puedes hacerlo desde pgAdmin, conectado a PostgreSQL, ejecutando:
+### 1. Preparar PostgreSQL
 
+Crea la base de datos `MonacoApi` en PostgreSQL. Configura la cadena de conexión en User Secrets para que la contraseña no quede en el repositorio.
 
-
-```sql
-
-CREATE DATABASE "ProyectoDiseñoWeb2Context";
-
-```
-
-
-
-El proyecto lee la conexión con la clave `ProyectoDiseñoWeb2Context`. Para guardar tus datos de conexión localmente, abre una terminal en la raíz del repositorio y ejecuta estos comandos en PowerShell:
-
-
+Abre PowerShell en la carpeta del backend:
 
 ```powershell
-
-dotnet user-secrets init --project ./ProyectoDiseñoWeb2/ProyectoDiseñoWeb2.csproj
-
-dotnet user-secrets set "ConnectionStrings:ProyectoDiseñoWeb2Context" "Host=localhost;Port=5432;Database=ProyectoDiseñoWeb2Context;Username=postgres;Password=TU\_CONTRASEÑA" --project ./ProyectoDiseñoWeb2/ProyectoDiseñoWeb2.csproj
-
+cd "C:\ruta\a\Proyecto final\Backend_VS\ProyectoDiseñoWeb2"
 ```
 
-
-
-Reemplaza `TU\_CONTRASEÑA` por la contraseña de tu usuario de PostgreSQL. Si PostgreSQL usa otro puerto o usuario, actualiza también esos valores.
-
-
-
-El primer comando se ejecuta una sola vez. Añade al proyecto un identificador para los secretos; ese identificador no contiene tu contraseña. Los secretos se guardan en tu equipo y no se suben al repositorio.
-
-
-
-Instalar dependencias y crear las tablas
-
-
-
-Desde la raíz del repositorio, restaura los paquetes:
-
-
-
-```bash
-
-dotnet restore ./ProyectoDiseñoWeb2/ProyectoDiseñoWeb2.csproj
-
-```
-
-
-
-Si todavía no tienes instalada la herramienta de Entity Framework, instálala:
-
-
-
-```bash
-
-dotnet tool install --global dotnet-ef --version 10.0.13
-
-```
-
-
-
-Aplica la migración incluida para crear las tablas en PostgreSQL. En PowerShell, ejecuta:
-
-
+Inicializa User Secrets una sola vez y guarda tu conexión. Cambia el usuario y la contraseña según tu instalación:
 
 ```powershell
-
-$env:ASPNETCORE\_ENVIRONMENT = "Development"
-
-dotnet ef database update --project ./ProyectoDiseñoWeb2/ProyectoDiseñoWeb2.csproj --startup-project ./ProyectoDiseñoWeb2/ProyectoDiseñoWeb2.csproj
-
+dotnet user-secrets init
+dotnet user-secrets set "ConnectionStrings:ProyectoDiseñoWeb2Context" "Host=localhost;Port=5432;Database=MonacoApi;Username=postgres;Password=TU_CONTRASEÑA"
 ```
 
+### 2. Iniciar el backend
 
+Desde `Backend_VS/ProyectoDiseñoWeb2/` ejecuta:
 
-La migración inicial se encuentra en `ProyectoDiseñoWeb2/Migrations`.
-
-
-Ejecutar la API
-
-
-Desde la raíz del repositorio:
-
-
-
-```bash
-
-dotnet run --project ./ProyectoDiseñoWeb2/ProyectoDiseñoWeb2.csproj --launch-profile http
-
+```powershell
+dotnet run --launch-profile http
 ```
 
+El backend aplica las migraciones al iniciar y crea una categoría inicial y una cuenta de demostración si no existen. La API queda en `http://localhost:5051`; la documentación interactiva está en `http://localhost:5051/scalar/`.
 
+Puedes comprobar la consulta pública del catálogo en `http://localhost:5051/api/Productos/listaReal`.
 
-La API se ejecutará en:
+### 3. Iniciar el frontend
 
+Abre una segunda terminal y entra en `FrontendMonacoApi/`:
 
+```powershell
+cd "C:\ruta\a\Proyecto final\FrontendMonacoApi"
+npm ci
+npm start
+```
+
+Abre `http://localhost:4200`. Mantén abiertas las dos terminales mientras uses la aplicación.
+
+Para generar la versión compilada del frontend:
+
+```powershell
+npm run build
+```
+
+## Estructura del repositorio
 
 ```text
-
-http://localhost:5051
-
+Proyecto final/
+├── Backend_VS/
+│   └── ProyectoDiseñoWeb2/
+│       ├── Controllers/       # Endpoints y autorización
+│       ├── Dominio/           # Entidades de la base de datos
+│       ├── Migrations/        # Migraciones de Entity Framework
+│       ├── Program.cs         # Configuración, autenticación y arranque
+│       └── ProyectoDiseñoWeb2.csproj
+├── FrontendMonacoApi/
+│   ├── public/
+│   ├── src/app/               # Componentes, modelos y servicios Angular
+│   ├── proxy.conf.json        # Proxy local hacia el backend
+│   ├── package.json
+│   └── package-lock.json
+├── .gitignore
+└── README.md
 ```
 
+## Preparar la subida a GitHub
 
+El repositorio debe crearse desde la carpeta `Proyecto final/`, que contiene tanto el frontend como el backend. El `.gitignore` de esta raíz excluye dependencias, compilaciones y archivos locales de Visual Studio.
 
-La documentación interactiva de Scalar está disponible en:
+1. Crea un repositorio vacío en GitHub.
+2. Abre una terminal en `Proyecto final/` y ejecuta:
 
-
-
-```text
-
-http://localhost:5051/scalar/
-
+```powershell
+git init
+git status
+git add .
+git status
+git commit -m "Proyecto final Mónaco"
+git branch -M main
+git remote add origin https://github.com/TU-USUARIO/TU-REPOSITORIO.git
+git push -u origin main
 ```
 
+Reemplaza la URL de ejemplo por la dirección de tu repositorio. Antes de confirmar, revisa el segundo `git status`: no deben aparecer contraseñas, archivos de configuración local, `node_modules`, `dist`, `bin` ni `obj`.
 
+## Configuración de seguridad antes de publicar
 
-La especificación OpenAPI está disponible en:
+- `Program.cs` crea una cuenta de administrador de demostración con una contraseña fija en el código. Cámbiala por una configuración privada antes de usar o publicar el sistema fuera del entorno local.
+- Mantén la cadena de conexión y las contraseñas reales fuera de `appsettings.json`, del código fuente y de GitHub. Usa User Secrets en desarrollo y variables de entorno o un gestor de secretos en producción.
+- Las cookies de sesión deben usarse con HTTPS en producción. El proxy y las direcciones `localhost` de este README son solo para desarrollo local.
 
+## Estado del proyecto
 
-
-```text
-
-http://localhost:5051/openapi/v1.json
-
-```
-
-
-
-\Recursos disponibles
-
-
-
-Los controladores ofrecen operaciones para listar, buscar, crear, actualizar y borrar registros. La documentación de Scalar muestra las rutas y los parámetros de cada operación.
-
-
-
-Categorías : `/api/Categorias` 
-Clientes : `/api/Clientes` 
-Detalles de pedidos : `/api/DetallePedidos` 
-Pagos : `/api/Pagos` 
-Pedidos : `/api/Pedidos` 
-Productos : `/api/Productos` 
-Solicitudes de soporte : `/api/SolicitudesSoporte` 
-Sucursales : `/api/Sucursales` 
-Usuarios : `/api/Usuarios` 
-
-
-
-Ejemplos de rutas:
-
-
-
-```text
-
-GET    /api/Productos/listaReal
-
-GET    /api/Productos/BuscarProducto/{Id\_Producto}
-
-POST   /api/Productos/Crear
-
-PUT    /api/Productos/ActualizarProducto/{...}
-
-DELETE /api/Productos/Borrar/{Id\_Producto}
-
-```
-
-
-
-Estructura del proyecto
-
-
-
-```text
-
-Monaco-API/
-
-├── README.md
-
-└── ProyectoDiseñoWeb2/
-
-&#x20;   ├── Controllers/   # Endpoints de la API
-
-&#x20;   ├── Dominio/       # Modelos de datos
-
-&#x20;   ├── Migrations/    # Migraciones de Entity Framework
-
-&#x20;   ├── Properties/    # Configuración de ejecución
-
-&#x20;   ├── Program.cs     # Configuración y arranque de la API
-
-&#x20;   └── ProyectoDiseñoWeb2.csproj
-
-```
-
-
-
-Notas
-
-
-
-- Este repositorio contiene el backend de la API; no necesita Node.js para ejecutarse.
-
-- La conexión de `appsettings.json` contiene valores locales de ejemplo. Usa User Secrets para tus datos de PostgreSQL y evita subir contraseñas reales a GitHub.
+Esta versión implementa el catálogo, autenticación y registro, pedidos de clientes con control de stock y administración de productos. No incluye pagos en línea ni un panel CRUD general para todas las entidades de la base de datos.
