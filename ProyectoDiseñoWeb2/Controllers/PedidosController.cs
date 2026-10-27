@@ -40,7 +40,7 @@ public class PedidosController : ControllerBase
         return Ok(pedido);
     }
 
-    [HttpPut("ActualizarPedido/{Id_Pedido}/{Id_Cliente}/{Fecha}/{Total}/{Estado}/{DireccionEntrega}/{ModalidadEntrega}/{Id_Sucursal}")]
+    [HttpPut("ActualizarPedido/{Id_Pedido}/{Id_Cliente}/{Fecha}/{Total}/{Estado}/{DireccionEntrega}/{ModalidadEntrega}/{Id_Sucursal?}")]
     public async Task<IActionResult> ActualizarPedido(
         int Id_Pedido, int Id_Cliente, DateTime Fecha,
         decimal Total, string Estado, string DireccionEntrega,
